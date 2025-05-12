@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "./Dashboard";
 import { 
   Table, 
@@ -17,7 +18,8 @@ import {
   Check, 
   X, 
   Search,
-  PlusCircle
+  PlusCircle,
+  History
 } from "lucide-react";
 import {
   Dialog,
@@ -56,12 +58,12 @@ import { useForm } from "react-hook-form";
 import InputMask from "react-input-mask";
 import { toast } from "sonner";
 
-// Dados mockados para os processos
+// Dados mockados para os processos - updated to use number for romaneio
 const initialProcessos = [
   {
     id: 1,
     dataHora: "12/05/2025 08:30",
-    romaneio: "ROM-001",
+    romaneio: 1,
     tipoMov: "ENTREGA",
     motorista: "João Silva",
     placa: "ABC1234",
@@ -75,7 +77,7 @@ const initialProcessos = [
   {
     id: 2,
     dataHora: "12/05/2025 09:15",
-    romaneio: "ROM-002",
+    romaneio: 2,
     tipoMov: "ENTREGA",
     motorista: "Carlos Santos",
     placa: "DEF5678",
@@ -89,7 +91,7 @@ const initialProcessos = [
   {
     id: 3,
     dataHora: "12/05/2025 10:00",
-    romaneio: "ROM-003",
+    romaneio: 3,
     tipoMov: "ENTREGA",
     motorista: "Maria Oliveira",
     placa: "GHI9012",
@@ -103,7 +105,7 @@ const initialProcessos = [
   {
     id: 4,
     dataHora: "12/05/2025 11:30",
-    romaneio: "ROM-004",
+    romaneio: 4,
     tipoMov: "ENTREGA",
     motorista: "Pedro Costa",
     placa: "JKL3456",
@@ -114,20 +116,6 @@ const initialProcessos = [
     concluido: false,
     saida: false
   },
-  {
-    id: 5,
-    dataHora: "12/05/2025 13:45",
-    romaneio: "ROM-005",
-    tipoMov: "ENTREGA",
-    motorista: "Ana Souza",
-    placa: "MNO7890",
-    veiculo: "Carreta",
-    validado: true,
-    doca: "DOCA 02",
-    emDoca: true,
-    concluido: true,
-    saida: false
-  }
 ];
 
 // Lista de docas disponíveis
@@ -143,6 +131,7 @@ const tiposVeiculos = ["Van", "Caminhão 3/4", "Caminhão Baú", "Carreta", "Bit
 const tiposMovimentacao = ["VAZIO", "COLETA", "ENTREGA", "EM ANÁLISE", "ENTREGA COLETA", "DESCARGA MANIFESTO", "CARREGAMENTO MANIFESTO"];
 
 const Portaria = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [processos, setProcessos] = useState(initialProcessos);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -184,7 +173,7 @@ const Portaria = () => {
   const generateNextRomaneioNumber = () => {
     const allProcessos = [...processos, ...historicalProcessos];
     const highestId = Math.max(...allProcessos.map(p => p.id), 0);
-    return `ROM-${String(highestId + 1).padStart(3, '0')}`;
+    return highestId + 1;
   };
 
   // Cálculos para os indicadores
@@ -266,8 +255,12 @@ const Portaria = () => {
       romaneio: generateNextRomaneioNumber(),
       tipoMov: data.tipoMovimentacao,
       motorista: data.nomeMotorista,
+      cpfMotorista: data.cpfMotorista,
+      telefoneMotorista: data.telefoneMotorista,
       placa: data.placaCavalo,
+      placaCarreta: data.placaCarreta,
       veiculo: data.tipoVeiculo,
+      transportadora: data.transportadora,
       validado: false,
       doca: null,
       emDoca: false,
@@ -296,6 +289,13 @@ const Portaria = () => {
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
+            <Button 
+              onClick={() => navigate("/historico")} 
+              className="bg-gray-600 hover:bg-gray-700"
+            >
+              <History className="w-4 h-4 mr-2" />
+              Histórico
+            </Button>
             <Button 
               onClick={() => setNovaPortariaOpen(true)} 
               className="bg-blue-800 hover:bg-blue-900"
@@ -363,7 +363,7 @@ const Portaria = () => {
                 processos
                   .filter(processo => 
                     searchTerm === "" || 
-                    processo.romaneio.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    processo.romaneio.toString().includes(searchTerm) || 
                     processo.motorista.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     processo.placa.toLowerCase().includes(searchTerm.toLowerCase())
                   )

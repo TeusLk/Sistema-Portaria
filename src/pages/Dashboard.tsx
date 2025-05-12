@@ -1,7 +1,5 @@
 
 import Sidebar from "@/components/Sidebar";
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -19,17 +17,12 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 };
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  
-  // Efeito para redirecionar para a Portaria como padrão
-  useEffect(() => {
-    navigate("/portaria");
-  }, [navigate]);
-
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400 text-xl">Selecione uma opção no menu lateral</p>
+      <div className="flex flex-col items-center justify-center h-full">
+        <h1 className="text-3xl font-bold text-blue-800 mb-4">Sistema de Controle</h1>
+        <p className="text-gray-600 text-xl mb-8">Bem-vindo ao painel de controle</p>
+        <p className="text-gray-400 text-lg">Selecione uma opção no menu lateral para começar</p>
       </div>
     </DashboardLayout>
   );
