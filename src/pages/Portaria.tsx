@@ -16,11 +16,46 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Check, 
   X, 
-  Search 
+  Search,
+  PlusCircle
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 // Dados mockados para os processos
-const processos = [
+const initialProcessos = [
   {
     id: 1,
     dataHora: "12/05/2025 08:30",
@@ -44,7 +79,7 @@ const processos = [
     placa: "DEF5678",
     veiculo: "Carreta",
     validado: true,
-    doca: "DOCA 03",
+    doca: null,
     emDoca: false,
     concluido: false,
     saida: false
@@ -93,8 +128,49 @@ const processos = [
   }
 ];
 
+// Lista de docas disponíveis
+const docas = Array.from({ length: 18 }, (_, i) => `DOCA ${String(i + 1).padStart(2, '0')}`);
+
+// Lista de transportadoras
+const transportadoras = ["Transportadora A", "Transportadora B", "Transportadora C", "Transportadora D"];
+
+// Lista de tipos de veículos
+const tiposVeiculos = ["Van", "Caminhão 3/4", "Caminhão Baú", "Carreta", "Bitrem", "Rodotrem"];
+
+// Lista de clientes
+const clientes = ["Cliente A", "Cliente B", "Cliente C", "Cliente D", "Cliente E"];
+
+// Tipos de movimentação
+const tiposMovimentacao = ["ENTREGA", "COLETA", "DEVOLUÇÃO", "TRANSFERÊNCIA"];
+
 const Portaria = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [processos, setProcessos] = useState(initialProcessos);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [currentAction, setCurrentAction] = useState<{
+    id: number;
+    field: 'validado' | 'emDoca' | 'concluido' | 'saida';
+  } | null>(null);
+  const [docaDialogOpen, setDocaDialogOpen] = useState(false);
+  const [selectedProcessId, setSelectedProcessId] = useState<number | null>(null);
+  const [selectedDoca, setSelectedDoca] = useState<string | null>(null);
+  const [novaPortariaOpen, setNovaPortariaOpen] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      tipoMovimentacao: "",
+      romaneio: "",
+      cpfMotorista: "",
+      nomeMotorista: "",
+      statusCnh: "",
+      transportadora: "",
+      placaCavalo: "",
+      placaCarreta: "",
+      tipoVeiculo: "",
+      telefoneMotorista: "",
+      cliente: "",
+    }
+  });
 
   // Cálculos para os indicadores
   const totalProcessos = processos.length;
@@ -102,19 +178,99 @@ const Portaria = () => {
   const processosEmDoca = processos.filter(p => p.emDoca).length;
   const processosConcluidos = processos.filter(p => p.concluido).length;
 
+  const handleConfirmAction = () => {
+    if (!currentAction) return;
+
+    setProcessos(prev => 
+      prev.map(processo => 
+        processo.id === currentAction.id
+          ? { ...processo, [currentAction.field]: true }
+          : processo
+      )
+    );
+    setConfirmDialogOpen(false);
+    setCurrentAction(null);
+  };
+
+  const handleStatusClick = (id: number, field: 'validado' | 'emDoca' | 'concluido' | 'saida') => {
+    const processo = processos.find(p => p.id === id);
+    if (!processo || processo[field]) return; // Se já está validado, não faz nada
+
+    setCurrentAction({ id, field });
+    setConfirmDialogOpen(true);
+  };
+
+  const handleAcionarClick = (id: number) => {
+    const processo = processos.find(p => p.id === id);
+    if (!processo || !processo.validado || processo.doca) return;
+
+    setSelectedProcessId(id);
+    setDocaDialogOpen(true);
+  };
+
+  const handleDocaSelect = () => {
+    if (!selectedProcessId || !selectedDoca) return;
+
+    setProcessos(prev => 
+      prev.map(processo => 
+        processo.id === selectedProcessId
+          ? { ...processo, doca: selectedDoca, emDoca: true }
+          : processo
+      )
+    );
+    setDocaDialogOpen(false);
+    setSelectedProcessId(null);
+    setSelectedDoca(null);
+  };
+
+  const handleNovaPortariaSubmit = (data: any) => {
+    // Criar um novo registro com dados do formulário
+    const newId = Math.max(...processos.map(p => p.id)) + 1;
+    const now = new Date();
+    const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    const novoProcesso = {
+      id: newId,
+      dataHora: formattedDate,
+      romaneio: data.romaneio,
+      tipoMov: data.tipoMovimentacao,
+      motorista: data.nomeMotorista,
+      placa: data.placaCavalo,
+      veiculo: data.tipoVeiculo,
+      validado: false,
+      doca: null,
+      emDoca: false,
+      concluido: false,
+      saida: false
+    };
+
+    setProcessos([...processos, novoProcesso]);
+    setNovaPortariaOpen(false);
+    form.reset();
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Monitoramento de Portaria</h1>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              className="pl-10 w-64" 
-              placeholder="Buscar processo..." 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                className="pl-10 w-64" 
+                placeholder="Buscar processo..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button 
+              onClick={() => setNovaPortariaOpen(true)} 
+              className="bg-bluePrimary hover:bg-blue-800"
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Nova Portaria
+            </Button>
           </div>
         </div>
         
@@ -178,11 +334,16 @@ const Portaria = () => {
                   <TableCell>{processo.placa}</TableCell>
                   <TableCell>{processo.veiculo}</TableCell>
                   <TableCell>
-                    {processo.validado ? (
-                      <Check className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <X className="h-5 w-5 text-bluePrimary" />
-                    )}
+                    <button 
+                      onClick={() => handleStatusClick(processo.id, 'validado')}
+                      className="focus:outline-none"
+                    >
+                      {processo.validado ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <X className="h-5 w-5 text-bluePrimary" />
+                      )}
+                    </button>
                   </TableCell>
                   <TableCell>
                     {processo.validado ? (
@@ -191,7 +352,11 @@ const Portaria = () => {
                           {processo.doca}
                         </Badge>
                       ) : (
-                        <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-xs">
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleAcionarClick(processo.id)}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-xs"
+                        >
                           ACIONAR MOTORISTA
                         </Button>
                       )
@@ -202,25 +367,43 @@ const Portaria = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {processo.emDoca ? (
-                      <Check className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <X className="h-5 w-5 text-bluePrimary" />
-                    )}
+                    <button 
+                      onClick={() => handleStatusClick(processo.id, 'emDoca')}
+                      className="focus:outline-none"
+                      disabled={!processo.validado || !processo.doca}
+                    >
+                      {processo.emDoca ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <X className="h-5 w-5 text-bluePrimary" />
+                      )}
+                    </button>
                   </TableCell>
                   <TableCell>
-                    {processo.concluido ? (
-                      <Check className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <X className="h-5 w-5 text-bluePrimary" />
-                    )}
+                    <button 
+                      onClick={() => handleStatusClick(processo.id, 'concluido')}
+                      className="focus:outline-none"
+                      disabled={!processo.emDoca}
+                    >
+                      {processo.concluido ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <X className="h-5 w-5 text-bluePrimary" />
+                      )}
+                    </button>
                   </TableCell>
                   <TableCell>
-                    {processo.saida ? (
-                      <Check className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <X className="h-5 w-5 text-bluePrimary" />
-                    )}
+                    <button 
+                      onClick={() => handleStatusClick(processo.id, 'saida')}
+                      className="focus:outline-none"
+                      disabled={!processo.concluido}
+                    >
+                      {processo.saida ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <X className="h-5 w-5 text-bluePrimary" />
+                      )}
+                    </button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -228,6 +411,239 @@ const Portaria = () => {
           </Table>
         </div>
       </div>
+
+      {/* Dialog de confirmação para alteração de status */}
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja confirmar esta ação?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAction}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog para seleção da doca */}
+      <Dialog open={docaDialogOpen} onOpenChange={setDocaDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Selecionar Doca</DialogTitle>
+            <DialogDescription>
+              Escolha a doca para a qual o motorista deve ser direcionado
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={selectedDoca || ""} onValueChange={setSelectedDoca}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar doca" />
+              </SelectTrigger>
+              <SelectContent>
+                {docas.map((doca) => (
+                  <SelectItem key={doca} value={doca}>
+                    {doca}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleDocaSelect} 
+              className="bg-bluePrimary hover:bg-blue-800"
+              disabled={!selectedDoca}
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Nova Portaria */}
+      <Dialog open={novaPortariaOpen} onOpenChange={setNovaPortariaOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nova Portaria</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para registrar uma nova portaria
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={form.handleSubmit(handleNovaPortariaSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data e Hora</label>
+                <Input 
+                  value={new Date().toLocaleString()}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Tipo da Movimentação <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={form.watch("tipoMovimentacao")}
+                  onValueChange={value => form.setValue("tipoMovimentacao", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiposMovimentacao.map((tipo) => (
+                      <SelectItem key={tipo} value={tipo}>
+                        {tipo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Nº do Romaneio <span className="text-red-500">*</span>
+                </label>
+                <Input 
+                  {...form.register("romaneio")}
+                  placeholder="Digite o romaneio"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  CPF do Motorista <span className="text-red-500">*</span>
+                </label>
+                <Input 
+                  {...form.register("cpfMotorista")}
+                  placeholder="Digite o CPF"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Nome do Motorista <span className="text-red-500">*</span>
+                </label>
+                <Input 
+                  {...form.register("nomeMotorista")}
+                  placeholder="Digite o nome completo"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status CNH</label>
+                <Input 
+                  {...form.register("statusCnh")}
+                  placeholder="Status da CNH"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Transportadora <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={form.watch("transportadora")}
+                  onValueChange={value => form.setValue("transportadora", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a transportadora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transportadoras.map((transp) => (
+                      <SelectItem key={transp} value={transp}>
+                        {transp}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Placa Cavalo <span className="text-red-500">*</span>
+                </label>
+                <Input 
+                  {...form.register("placaCavalo")}
+                  placeholder="Digite a placa"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Placa Carreta</label>
+                <Input 
+                  {...form.register("placaCarreta")}
+                  placeholder="Digite a placa (se aplicável)"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Tipo de Veículo <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={form.watch("tipoVeiculo")}
+                  onValueChange={value => form.setValue("tipoVeiculo", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiposVeiculos.map((tipo) => (
+                      <SelectItem key={tipo} value={tipo}>
+                        {tipo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Telefone do Motorista</label>
+                <Input 
+                  {...form.register("telefoneMotorista")}
+                  placeholder="Digite o telefone"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Cliente <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={form.watch("cliente")}
+                  onValueChange={value => form.setValue("cliente", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map((cliente) => (
+                      <SelectItem key={cliente} value={cliente}>
+                        {cliente}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                className="bg-bluePrimary hover:bg-blue-800 mt-4"
+              >
+                Salvar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
