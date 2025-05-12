@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "./Dashboard";
 import { 
   Table, 
@@ -53,6 +53,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
+import InputMask from "react-input-mask";
+import { toast } from "sonner";
 
 // Dados mockados para os processos
 const initialProcessos = [
@@ -124,7 +126,7 @@ const initialProcessos = [
     doca: "DOCA 02",
     emDoca: true,
     concluido: true,
-    saida: true
+    saida: false
   }
 ];
 
@@ -137,11 +139,8 @@ const transportadoras = ["Transportadora A", "Transportadora B", "Transportadora
 // Lista de tipos de veículos
 const tiposVeiculos = ["Van", "Caminhão 3/4", "Caminhão Baú", "Carreta", "Bitrem", "Rodotrem"];
 
-// Lista de clientes
-const clientes = ["Cliente A", "Cliente B", "Cliente C", "Cliente D", "Cliente E"];
-
-// Tipos de movimentação
-const tiposMovimentacao = ["ENTREGA", "COLETA", "DEVOLUÇÃO", "TRANSFERÊNCIA"];
+// Tipos de movimentação atualizados conforme requisitos
+const tiposMovimentacao = ["VAZIO", "COLETA", "ENTREGA", "EM ANÁLISE", "ENTREGA COLETA", "DESCARGA MANIFESTO", "CARREGAMENTO MANIFESTO"];
 
 const Portaria = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -155,6 +154,7 @@ const Portaria = () => {
   const [selectedProcessId, setSelectedProcessId] = useState<number | null>(null);
   const [selectedDoca, setSelectedDoca] = useState<string | null>(null);
   const [novaPortariaOpen, setNovaPortariaOpen] = useState(false);
+  const [historicalProcessos, setHistoricalProcessos] = useState<any[]>([]);
 
   const form = useForm({
     defaultValues: {
@@ -168,9 +168,24 @@ const Portaria = () => {
       placaCarreta: "",
       tipoVeiculo: "",
       telefoneMotorista: "",
-      cliente: "",
     }
   });
+
+  // Efeito para remover processos concluídos da lista principal
+  useEffect(() => {
+    const completedProcesses = processos.filter(p => p.saida);
+    if (completedProcesses.length > 0) {
+      setHistoricalProcessos(prev => [...prev, ...completedProcesses]);
+      setProcessos(prev => prev.filter(p => !p.saida));
+    }
+  }, [processos]);
+
+  // Função para gerar o próximo número de romaneio
+  const generateNextRomaneioNumber = () => {
+    const allProcessos = [...processos, ...historicalProcessos];
+    const highestId = Math.max(...allProcessos.map(p => p.id), 0);
+    return `ROM-${String(highestId + 1).padStart(3, '0')}`;
+  };
 
   // Cálculos para os indicadores
   const totalProcessos = processos.length;
@@ -188,6 +203,12 @@ const Portaria = () => {
           : processo
       )
     );
+    
+    // Se a ação é de saída, mostra uma confirmação
+    if (currentAction.field === 'saida') {
+      toast.success("Processo concluído e movido para o histórico");
+    }
+
     setConfirmDialogOpen(false);
     setCurrentAction(null);
   };
@@ -218,21 +239,31 @@ const Portaria = () => {
           : processo
       )
     );
+
+    toast.success(`Motorista direcionado para ${selectedDoca}`);
     setDocaDialogOpen(false);
     setSelectedProcessId(null);
     setSelectedDoca(null);
   };
 
   const handleNovaPortariaSubmit = (data: any) => {
+    const requiredFields = ['tipoMovimentacao', 'nomeMotorista', 'transportadora', 'placaCavalo', 'tipoVeiculo'];
+    const missingFields = requiredFields.filter(field => !data[field]);
+    
+    if (missingFields.length > 0) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
     // Criar um novo registro com dados do formulário
-    const newId = Math.max(...processos.map(p => p.id)) + 1;
+    const newId = Math.max(...processos.map(p => p.id), ...historicalProcessos.map(p => p.id), 0) + 1;
     const now = new Date();
     const formattedDate = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
     const novoProcesso = {
       id: newId,
       dataHora: formattedDate,
-      romaneio: data.romaneio,
+      romaneio: generateNextRomaneioNumber(),
       tipoMov: data.tipoMovimentacao,
       motorista: data.nomeMotorista,
       placa: data.placaCavalo,
@@ -247,6 +278,7 @@ const Portaria = () => {
     setProcessos([...processos, novoProcesso]);
     setNovaPortariaOpen(false);
     form.reset();
+    toast.success("Nova portaria registrada com sucesso");
   };
 
   return (
@@ -266,7 +298,7 @@ const Portaria = () => {
             </div>
             <Button 
               onClick={() => setNovaPortariaOpen(true)} 
-              className="bg-bluePrimary hover:bg-blue-800"
+              className="bg-blue-800 hover:bg-blue-900"
             >
               <PlusCircle className="w-4 h-4 mr-2" />
               Nova Portaria
@@ -279,25 +311,25 @@ const Portaria = () => {
           <Card>
             <CardContent className="p-6 flex flex-col items-center">
               <span className="text-sm text-gray-600">Total de Processos</span>
-              <span className="text-3xl font-bold text-bluePrimary">{totalProcessos}</span>
+              <span className="text-3xl font-bold text-blue-800">{totalProcessos}</span>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-6 flex flex-col items-center">
               <span className="text-sm text-gray-600">Processos Validados</span>
-              <span className="text-3xl font-bold text-bluePrimary">{processosValidados}</span>
+              <span className="text-3xl font-bold text-blue-800">{processosValidados}</span>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-6 flex flex-col items-center">
               <span className="text-sm text-gray-600">Processos em Doca</span>
-              <span className="text-3xl font-bold text-bluePrimary">{processosEmDoca}</span>
+              <span className="text-3xl font-bold text-blue-800">{processosEmDoca}</span>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-6 flex flex-col items-center">
               <span className="text-sm text-gray-600">Processos Concluídos</span>
-              <span className="text-3xl font-bold text-bluePrimary">{processosConcluidos}</span>
+              <span className="text-3xl font-bold text-blue-800">{processosConcluidos}</span>
             </CardContent>
           </Card>
         </div>
@@ -321,92 +353,107 @@ const Portaria = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {processos.map((processo) => (
-                <TableRow key={processo.id}>
-                  <TableCell>{processo.dataHora}</TableCell>
-                  <TableCell>{processo.romaneio}</TableCell>
-                  <TableCell>
-                    <Badge className="bg-emerald-700 text-white hover:bg-emerald-800">
-                      {processo.tipoMov}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{processo.motorista}</TableCell>
-                  <TableCell>{processo.placa}</TableCell>
-                  <TableCell>{processo.veiculo}</TableCell>
-                  <TableCell>
-                    <button 
-                      onClick={() => handleStatusClick(processo.id, 'validado')}
-                      className="focus:outline-none"
-                    >
-                      {processo.validado ? (
-                        <Check className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <X className="h-5 w-5 text-bluePrimary" />
-                      )}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    {processo.validado ? (
-                      processo.doca ? (
-                        <Badge className="bg-green-600 hover:bg-green-700">
-                          {processo.doca}
-                        </Badge>
-                      ) : (
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleAcionarClick(processo.id)}
-                          className="bg-yellow-500 hover:bg-yellow-600 text-xs"
-                        >
-                          ACIONAR MOTORISTA
-                        </Button>
-                      )
-                    ) : (
-                      <Badge variant="outline" className="text-gray-500 border-gray-300 bg-gray-100">
-                        AG VALIDAÇÃO
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <button 
-                      onClick={() => handleStatusClick(processo.id, 'emDoca')}
-                      className="focus:outline-none"
-                      disabled={!processo.validado || !processo.doca}
-                    >
-                      {processo.emDoca ? (
-                        <Check className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <X className="h-5 w-5 text-bluePrimary" />
-                      )}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <button 
-                      onClick={() => handleStatusClick(processo.id, 'concluido')}
-                      className="focus:outline-none"
-                      disabled={!processo.emDoca}
-                    >
-                      {processo.concluido ? (
-                        <Check className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <X className="h-5 w-5 text-bluePrimary" />
-                      )}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <button 
-                      onClick={() => handleStatusClick(processo.id, 'saida')}
-                      className="focus:outline-none"
-                      disabled={!processo.concluido}
-                    >
-                      {processo.saida ? (
-                        <Check className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <X className="h-5 w-5 text-bluePrimary" />
-                      )}
-                    </button>
+              {processos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center py-6 text-gray-500">
+                    Nenhum processo em andamento
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                processos
+                  .filter(processo => 
+                    searchTerm === "" || 
+                    processo.romaneio.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    processo.motorista.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    processo.placa.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((processo) => (
+                    <TableRow key={processo.id}>
+                      <TableCell>{processo.dataHora}</TableCell>
+                      <TableCell>{processo.romaneio}</TableCell>
+                      <TableCell>
+                        <Badge className="bg-emerald-700 text-white hover:bg-emerald-800">
+                          {processo.tipoMov}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{processo.motorista}</TableCell>
+                      <TableCell>{processo.placa}</TableCell>
+                      <TableCell>{processo.veiculo}</TableCell>
+                      <TableCell>
+                        <button 
+                          onClick={() => handleStatusClick(processo.id, 'validado')}
+                          className="focus:outline-none"
+                        >
+                          {processo.validado ? (
+                            <Check className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <X className="h-5 w-5 text-blue-800" />
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        {processo.validado ? (
+                          processo.doca ? (
+                            <Badge className="bg-green-600 hover:bg-green-700">
+                              {processo.doca}
+                            </Badge>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleAcionarClick(processo.id)}
+                              className="bg-yellow-500 hover:bg-yellow-600 text-xs"
+                            >
+                              ACIONAR MOTORISTA
+                            </Button>
+                          )
+                        ) : (
+                          <Badge variant="outline" className="text-gray-500 border-gray-300 bg-gray-100">
+                            AG VALIDAÇÃO
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <button 
+                          onClick={() => handleStatusClick(processo.id, 'emDoca')}
+                          className="focus:outline-none"
+                          disabled={!processo.validado || !processo.doca}
+                        >
+                          {processo.emDoca ? (
+                            <Check className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <X className="h-5 w-5 text-blue-800" />
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <button 
+                          onClick={() => handleStatusClick(processo.id, 'concluido')}
+                          className="focus:outline-none"
+                          disabled={!processo.emDoca}
+                        >
+                          {processo.concluido ? (
+                            <Check className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <X className="h-5 w-5 text-blue-800" />
+                          )}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <button 
+                          onClick={() => handleStatusClick(processo.id, 'saida')}
+                          className="focus:outline-none"
+                          disabled={!processo.concluido}
+                        >
+                          {processo.saida ? (
+                            <Check className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <X className="h-5 w-5 text-blue-800" />
+                          )}
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -454,7 +501,7 @@ const Portaria = () => {
           <DialogFooter>
             <Button 
               onClick={handleDocaSelect} 
-              className="bg-bluePrimary hover:bg-blue-800"
+              className="bg-blue-800 hover:bg-blue-900"
               disabled={!selectedDoca}
             >
               Confirmar
@@ -478,7 +525,18 @@ const Portaria = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Data e Hora</label>
                 <Input 
-                  value={new Date().toLocaleString()}
+                  value={new Date().toLocaleString('pt-BR')}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  N° do Romaneio
+                </label>
+                <Input 
+                  value={generateNextRomaneioNumber()}
                   disabled
                   className="bg-gray-50"
                 />
@@ -507,22 +565,20 @@ const Portaria = () => {
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Nº do Romaneio <span className="text-red-500">*</span>
-                </label>
-                <Input 
-                  {...form.register("romaneio")}
-                  placeholder="Digite o romaneio"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
                   CPF do Motorista <span className="text-red-500">*</span>
                 </label>
-                <Input 
-                  {...form.register("cpfMotorista")}
-                  placeholder="Digite o CPF"
-                />
+                <InputMask
+                  mask="999.999.999-99"
+                  value={form.watch("cpfMotorista")}
+                  onChange={e => form.setValue("cpfMotorista", e.target.value)}
+                >
+                  {(inputProps: any) => (
+                    <Input 
+                      {...inputProps}
+                      placeholder="000.000.000-00"
+                    />
+                  )}
+                </InputMask>
               </div>
               
               <div className="space-y-2">
@@ -605,38 +661,25 @@ const Portaria = () => {
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Telefone do Motorista</label>
-                <Input 
-                  {...form.register("telefoneMotorista")}
-                  placeholder="Digite o telefone"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Cliente <span className="text-red-500">*</span>
-                </label>
-                <Select
-                  value={form.watch("cliente")}
-                  onValueChange={value => form.setValue("cliente", value)}
+                <InputMask
+                  mask="(99) 99999-9999"
+                  value={form.watch("telefoneMotorista")}
+                  onChange={e => form.setValue("telefoneMotorista", e.target.value)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes.map((cliente) => (
-                      <SelectItem key={cliente} value={cliente}>
-                        {cliente}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {(inputProps: any) => (
+                    <Input 
+                      {...inputProps}
+                      placeholder="(00) 00000-0000"
+                    />
+                  )}
+                </InputMask>
               </div>
             </div>
             
             <DialogFooter>
               <Button 
                 type="submit" 
-                className="bg-bluePrimary hover:bg-blue-800 mt-4"
+                className="bg-blue-800 hover:bg-blue-900 mt-4"
               >
                 Salvar
               </Button>
