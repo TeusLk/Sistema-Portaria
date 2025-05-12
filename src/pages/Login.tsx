@@ -8,13 +8,42 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 
 const Login = () => {
+  const [domain, setDomain] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [domainError, setDomainError] = useState("");
   const navigate = useNavigate();
+
+  const validateDomain = (value: string) => {
+    if (!value) {
+      return "Domínio é obrigatório";
+    }
+    if (value.length !== 3) {
+      return "Domínio deve ter exatamente 3 letras";
+    }
+    if (!/^[a-zA-Z]+$/.test(value)) {
+      return "Domínio deve conter apenas letras";
+    }
+    return "";
+  };
+
+  const handleDomainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase();
+    setDomain(value);
+    setDomainError(validateDomain(value));
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate domain again before submission
+    const error = validateDomain(domain);
+    if (error) {
+      setDomainError(error);
+      return;
+    }
+    
     setIsLoading(true);
     
     // Simulação de login para fins de demonstração
@@ -22,6 +51,8 @@ const Login = () => {
     try {
       setTimeout(() => {
         // Simula um login bem-sucedido
+        // Agora incluindo o domínio nos dados de login
+        console.log("Login data:", { domain, email, password });
         toast.success("Login realizado com sucesso");
         navigate("/dashboard");
       }, 1500);
@@ -44,11 +75,28 @@ const Login = () => {
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-center">Login</CardTitle>
             <CardDescription className="text-center">
-              Digite seu email e senha para entrar
+              Digite seu domínio, email e senha para entrar
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="domain">Domínio</Label>
+                <Input
+                  id="domain"
+                  type="text"
+                  placeholder="DOM"
+                  value={domain}
+                  onChange={handleDomainChange}
+                  maxLength={3}
+                  required
+                  className="h-11 uppercase"
+                  aria-invalid={!!domainError}
+                />
+                {domainError && (
+                  <p className="text-sm text-red-500 mt-1">{domainError}</p>
+                )}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -86,7 +134,7 @@ const Login = () => {
               <Button 
                 type="submit" 
                 className="w-full h-11 bg-bluePrimary hover:bg-blue-800"
-                disabled={isLoading}
+                disabled={isLoading || !!domainError}
               >
                 {isLoading ? "Entrando..." : "Entrar"}
               </Button>
