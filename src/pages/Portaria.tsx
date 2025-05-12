@@ -19,7 +19,9 @@ import {
   Search,
   PlusCircle,
   History,
-  Settings
+  Settings,
+  Edit,
+  Trash2
 } from "lucide-react";
 import {
   Dialog,
@@ -180,11 +182,21 @@ const Portaria = () => {
   const [configTab, setConfigTab] = useState("docas");
   const [docasList, setDocasList] = useState(docas);
   const [veiculosList, setVeiculosList] = useState(tiposVeiculos);
+  const [tiposMovList, setTiposMovList] = useState(tiposMovimentacao);
   const [novaDoca, setNovaDoca] = useState("");
   const [novoVeiculo, setNovoVeiculo] = useState("");
+  const [novoTipoMov, setNovoTipoMov] = useState("");
   const [historicalProcessos, setHistoricalProcessos] = useState<any[]>([]);
   const [mensagens, setMensagens] = useState(mensagensPadrao);
   const [msgDialogOpen, setMsgDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [editItemDialog, setEditItemDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{type: string; value: string} | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<{type: string; value: string; newValue: string}>({
+    type: '',
+    value: '',
+    newValue: ''
+  });
 
   const form = useForm({
     defaultValues: {
@@ -322,9 +334,54 @@ const Portaria = () => {
     toast.success("Nova doca adicionada com sucesso");
   };
 
-  const handleRemoveDoca = (doca: string) => {
-    setDocasList(docasList.filter(d => d !== doca));
-    toast.success("Doca removida com sucesso");
+  const handleDeleteItem = (type: string, value: string) => {
+    setItemToDelete({type, value});
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!itemToDelete) return;
+
+    if (itemToDelete.type === 'doca') {
+      setDocasList(docasList.filter(d => d !== itemToDelete.value));
+      toast.success("Doca removida com sucesso");
+    } else if (itemToDelete.type === 'veiculo') {
+      setVeiculosList(veiculosList.filter(v => v !== itemToDelete.value));
+      toast.success("Tipo de veículo removido com sucesso");
+    } else if (itemToDelete.type === 'tipoMov') {
+      setTiposMovList(tiposMovList.filter(t => t !== itemToDelete.value));
+      toast.success("Tipo de movimentação removido com sucesso");
+    }
+
+    setDeleteConfirmOpen(false);
+    setItemToDelete(null);
+  };
+
+  const handleEditItem = (type: string, value: string) => {
+    setItemToEdit({type, value, newValue: value});
+    setEditItemDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!itemToEdit.newValue.trim()) {
+      toast.error("O campo não pode ficar vazio");
+      return;
+    }
+
+    const {type, value, newValue} = itemToEdit;
+
+    if (type === 'doca') {
+      setDocasList(docasList.map(d => d === value ? newValue : d));
+      toast.success("Doca editada com sucesso");
+    } else if (type === 'veiculo') {
+      setVeiculosList(veiculosList.map(v => v === value ? newValue : v));
+      toast.success("Tipo de veículo editado com sucesso");
+    } else if (type === 'tipoMov') {
+      setTiposMovList(tiposMovList.map(t => t === value ? newValue : t));
+      toast.success("Tipo de movimentação editado com sucesso");
+    }
+
+    setEditItemDialog(false);
   };
 
   const handleAddVeiculo = () => {
@@ -334,9 +391,11 @@ const Portaria = () => {
     toast.success("Novo tipo de veículo adicionado com sucesso");
   };
 
-  const handleRemoveVeiculo = (veiculo: string) => {
-    setVeiculosList(veiculosList.filter(v => v !== veiculo));
-    toast.success("Tipo de veículo removido com sucesso");
+  const handleAddTipoMov = () => {
+    if (!novoTipoMov) return;
+    setTiposMovList([...tiposMovList, novoTipoMov]);
+    setNovoTipoMov("");
+    toast.success("Novo tipo de movimentação adicionado com sucesso");
   };
 
   const handleSaveMensagens = () => {
@@ -676,7 +735,7 @@ const Portaria = () => {
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tiposMovimentacao.map((tipo) => (
+                    {tiposMovList.map((tipo) => (
                       <SelectItem key={tipo} value={tipo}>
                         {tipo}
                       </SelectItem>
@@ -845,9 +904,10 @@ const Portaria = () => {
           </DialogHeader>
           
           <Tabs defaultValue="docas" value={configTab} onValueChange={setConfigTab}>
-            <TabsList className="grid grid-cols-3 mb-4">
+            <TabsList className="grid grid-cols-4 mb-4">
               <TabsTrigger value="docas">Docas</TabsTrigger>
               <TabsTrigger value="veiculos">Veículos</TabsTrigger>
+              <TabsTrigger value="tiposMov">Tipos Movimentação</TabsTrigger>
               <TabsTrigger value="mensagens">Mensagens</TabsTrigger>
             </TabsList>
             
@@ -857,24 +917,35 @@ const Portaria = () => {
                   placeholder="Nome da nova doca"
                   value={novaDoca}
                   onChange={e => setNovaDoca(e.target.value)}
+                  className="flex-1"
                 />
                 <Button onClick={handleAddDoca}>Adicionar</Button>
               </div>
               
               <div className="border rounded-md p-4">
-                <h3 className="text-sm font-medium mb-2">Docas Disponíveis</h3>
-                <div className="grid grid-cols-3 gap-2">
+                <h3 className="text-sm font-medium mb-4">Docas Disponíveis</h3>
+                <div className="space-y-2">
                   {docasList.map(doca => (
-                    <div key={doca} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <span>{doca}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0" 
-                        onClick={() => handleRemoveDoca(doca)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <div key={doca} className="flex items-center justify-between bg-gray-50 p-3 rounded border">
+                      <span className="font-medium">{doca}</span>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          onClick={() => handleEditItem('doca', doca)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
+                          onClick={() => handleDeleteItem('doca', doca)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -887,24 +958,76 @@ const Portaria = () => {
                   placeholder="Nome do novo tipo de veículo"
                   value={novoVeiculo}
                   onChange={e => setNovoVeiculo(e.target.value)}
+                  className="flex-1"
                 />
                 <Button onClick={handleAddVeiculo}>Adicionar</Button>
               </div>
               
               <div className="border rounded-md p-4">
-                <h3 className="text-sm font-medium mb-2">Tipos de Veículos</h3>
-                <div className="grid grid-cols-2 gap-2">
+                <h3 className="text-sm font-medium mb-4">Tipos de Veículos</h3>
+                <div className="space-y-2">
                   {veiculosList.map(veiculo => (
-                    <div key={veiculo} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <span>{veiculo}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0" 
-                        onClick={() => handleRemoveVeiculo(veiculo)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <div key={veiculo} className="flex items-center justify-between bg-gray-50 p-3 rounded border">
+                      <span className="font-medium">{veiculo}</span>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          onClick={() => handleEditItem('veiculo', veiculo)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
+                          onClick={() => handleDeleteItem('veiculo', veiculo)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="tiposMov" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Nome do novo tipo de movimentação"
+                  value={novoTipoMov}
+                  onChange={e => setNovoTipoMov(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={handleAddTipoMov}>Adicionar</Button>
+              </div>
+              
+              <div className="border rounded-md p-4">
+                <h3 className="text-sm font-medium mb-4">Tipos de Movimentação</h3>
+                <div className="space-y-2">
+                  {tiposMovList.map(tipoMov => (
+                    <div key={tipoMov} className="flex items-center justify-between bg-gray-50 p-3 rounded border">
+                      <span className="font-medium">{tipoMov}</span>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          onClick={() => handleEditItem('tipoMov', tipoMov)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
+                          onClick={() => handleDeleteItem('tipoMov', tipoMov)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1019,6 +1142,49 @@ const Portaria = () => {
             <Button onClick={handleSaveMensagens} className="bg-blue-800 hover:bg-blue-900">
               Salvar Mensagens
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação para Excluir Item */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este item? Esta ação não poderá ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog para Editar Item */}
+      <Dialog open={editItemDialog} onOpenChange={setEditItemDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar {itemToEdit?.type === 'doca' ? 'Doca' : 
+                                   itemToEdit?.type === 'veiculo' ? 'Veículo' :
+                                   'Tipo de Movimentação'}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input 
+              value={itemToEdit.newValue}
+              onChange={e => setItemToEdit({...itemToEdit, newValue: e.target.value})}
+              className="mb-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setEditItemDialog(false)} variant="outline">Cancelar</Button>
+            <Button onClick={handleSaveEdit} className="bg-blue-800 hover:bg-blue-900">Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
