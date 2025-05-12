@@ -19,7 +19,8 @@ import {
   X, 
   Search,
   PlusCircle,
-  History
+  History,
+  Settings
 } from "lucide-react";
 import {
   Dialog,
@@ -54,11 +55,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import InputMask from "react-input-mask";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 
-// Dados mockados para os processos - updated to use number for romaneio
+// Dados mockados para os processos
 const initialProcessos = [
   {
     id: 1,
@@ -130,9 +133,24 @@ const tiposVeiculos = ["Van", "Caminhão 3/4", "Caminhão Baú", "Carreta", "Bit
 // Tipos de movimentação atualizados conforme requisitos
 const tiposMovimentacao = ["VAZIO", "COLETA", "ENTREGA", "EM ANÁLISE", "ENTREGA COLETA", "DESCARGA MANIFESTO", "CARREGAMENTO MANIFESTO"];
 
+// Mensagens padrão para configuração
+const mensagensPadrao = {
+  mensagemInicial: "Olá, seu romaneio está pronto para recebimento.",
+  acionamentoMotorista: "Dirija-se à doca designada.",
+  estorno: "Seu processo foi estornado.",
+  trocaDoca: "Sua doca foi alterada.",
+  conclusao: "Processo concluído com sucesso.",
+  desocuparDoca: "Favor desocupar a doca.",
+  finalizarProcesso: "Seu processo foi finalizado.",
+  retornoFinalizados: "Seu processo retornou para análise.",
+  finalizarInsucesso: "Processo finalizado sem sucesso.",
+  confirmacaoCadastro: "Motorista cadastrado com sucesso."
+};
+
 const Portaria = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<"romaneio" | "cpf" | "placa">("romaneio");
   const [processos, setProcessos] = useState(initialProcessos);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [currentAction, setCurrentAction] = useState<{
@@ -143,7 +161,15 @@ const Portaria = () => {
   const [selectedProcessId, setSelectedProcessId] = useState<number | null>(null);
   const [selectedDoca, setSelectedDoca] = useState<string | null>(null);
   const [novaPortariaOpen, setNovaPortariaOpen] = useState(false);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [configTab, setConfigTab] = useState("docas");
+  const [docasList, setDocasList] = useState(docas);
+  const [veiculosList, setVeiculosList] = useState(tiposVeiculos);
+  const [novaDoca, setNovaDoca] = useState("");
+  const [novoVeiculo, setNovoVeiculo] = useState("");
   const [historicalProcessos, setHistoricalProcessos] = useState<any[]>([]);
+  const [mensagens, setMensagens] = useState(mensagensPadrao);
+  const [msgDialogOpen, setMsgDialogOpen] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -274,21 +300,102 @@ const Portaria = () => {
     toast.success("Nova portaria registrada com sucesso");
   };
 
+  const handleAddDoca = () => {
+    if (!novaDoca) return;
+    setDocasList([...docasList, novaDoca]);
+    setNovaDoca("");
+    toast.success("Nova doca adicionada com sucesso");
+  };
+
+  const handleRemoveDoca = (doca: string) => {
+    setDocasList(docasList.filter(d => d !== doca));
+    toast.success("Doca removida com sucesso");
+  };
+
+  const handleAddVeiculo = () => {
+    if (!novoVeiculo) return;
+    setVeiculosList([...veiculosList, novoVeiculo]);
+    setNovoVeiculo("");
+    toast.success("Novo tipo de veículo adicionado com sucesso");
+  };
+
+  const handleRemoveVeiculo = (veiculo: string) => {
+    setVeiculosList(veiculosList.filter(v => v !== veiculo));
+    toast.success("Tipo de veículo removido com sucesso");
+  };
+
+  const handleSaveMensagens = () => {
+    toast.success("Mensagens salvas com sucesso");
+    setMsgDialogOpen(false);
+  };
+
+  const filteredProcessos = processos.filter(processo => {
+    if (searchTerm === "") return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    
+    switch (searchType) {
+      case "romaneio":
+        return processo.romaneio.toString().includes(searchTerm);
+      case "cpf":
+        return processo.cpfMotorista?.toLowerCase().includes(searchLower) || false;
+      case "placa":
+        return processo.placa.toLowerCase().includes(searchLower);
+      default:
+        return true;
+    }
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Monitoramento de Portaria</h1>
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                className="pl-10 w-64" 
-                placeholder="Buscar processo..." 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center gap-2">
+              <div className="flex">
+                <button 
+                  onClick={() => setSearchType("romaneio")} 
+                  className={`px-3 py-1 text-sm ${searchType === "romaneio" 
+                    ? "bg-blue-800 text-white" 
+                    : "bg-gray-200 text-gray-700"} rounded-l-md`}
+                >
+                  Romaneio
+                </button>
+                <button 
+                  onClick={() => setSearchType("cpf")} 
+                  className={`px-3 py-1 text-sm ${searchType === "cpf" 
+                    ? "bg-blue-800 text-white" 
+                    : "bg-gray-200 text-gray-700"}`}
+                >
+                  CPF
+                </button>
+                <button 
+                  onClick={() => setSearchType("placa")} 
+                  className={`px-3 py-1 text-sm ${searchType === "placa" 
+                    ? "bg-blue-800 text-white" 
+                    : "bg-gray-200 text-gray-700"} rounded-r-md`}
+                >
+                  Placa
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  className="pl-10 w-64" 
+                  placeholder={`Buscar por ${searchType}...`}
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
+            <Button 
+              onClick={() => setConfigDialogOpen(true)} 
+              className="bg-gray-700 hover:bg-gray-800"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configurações
+            </Button>
             <Button 
               onClick={() => navigate("/historico")} 
               className="bg-gray-600 hover:bg-gray-700"
@@ -624,18 +731,42 @@ const Portaria = () => {
                 <label className="text-sm font-medium">
                   Placa Cavalo <span className="text-red-500">*</span>
                 </label>
-                <Input 
-                  {...form.register("placaCavalo")}
-                  placeholder="Digite a placa"
-                />
+                <InputMask
+                  mask="aaa-9999"
+                  value={form.watch("placaCavalo")}
+                  onChange={e => form.setValue("placaCavalo", e.target.value.toUpperCase())}
+                  formatChars={{
+                    '9': '[0-9]',
+                    'a': '[A-Za-z]'
+                  }}
+                >
+                  {(inputProps: any) => (
+                    <Input 
+                      {...inputProps}
+                      placeholder="ABC-1234"
+                    />
+                  )}
+                </InputMask>
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Placa Carreta</label>
-                <Input 
-                  {...form.register("placaCarreta")}
-                  placeholder="Digite a placa (se aplicável)"
-                />
+                <InputMask
+                  mask="aaa-9999"
+                  value={form.watch("placaCarreta")}
+                  onChange={e => form.setValue("placaCarreta", e.target.value.toUpperCase())}
+                  formatChars={{
+                    '9': '[0-9]',
+                    'a': '[A-Za-z]'
+                  }}
+                >
+                  {(inputProps: any) => (
+                    <Input 
+                      {...inputProps}
+                      placeholder="ABC-1234"
+                    />
+                  )}
+                </InputMask>
               </div>
               
               <div className="space-y-2">
@@ -650,7 +781,7 @@ const Portaria = () => {
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tiposVeiculos.map((tipo) => (
+                    {veiculosList.map((tipo) => (
                       <SelectItem key={tipo} value={tipo}>
                         {tipo}
                       </SelectItem>
@@ -685,6 +816,195 @@ const Portaria = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Configurações */}
+      <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen} modal={true}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configurações do Sistema</DialogTitle>
+            <DialogDescription>
+              Gerencie docas, veículos e mensagens do sistema
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="docas" value={configTab} onValueChange={setConfigTab}>
+            <TabsList className="grid grid-cols-3 mb-4">
+              <TabsTrigger value="docas">Docas</TabsTrigger>
+              <TabsTrigger value="veiculos">Veículos</TabsTrigger>
+              <TabsTrigger value="mensagens">Mensagens</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="docas" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Nome da nova doca"
+                  value={novaDoca}
+                  onChange={e => setNovaDoca(e.target.value)}
+                />
+                <Button onClick={handleAddDoca}>Adicionar</Button>
+              </div>
+              
+              <div className="border rounded-md p-4">
+                <h3 className="text-sm font-medium mb-2">Docas Disponíveis</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {docasList.map(doca => (
+                    <div key={doca} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <span>{doca}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0" 
+                        onClick={() => handleRemoveDoca(doca)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="veiculos" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Nome do novo tipo de veículo"
+                  value={novoVeiculo}
+                  onChange={e => setNovoVeiculo(e.target.value)}
+                />
+                <Button onClick={handleAddVeiculo}>Adicionar</Button>
+              </div>
+              
+              <div className="border rounded-md p-4">
+                <h3 className="text-sm font-medium mb-2">Tipos de Veículos</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {veiculosList.map(veiculo => (
+                    <div key={veiculo} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <span>{veiculo}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0" 
+                        onClick={() => handleRemoveVeiculo(veiculo)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="mensagens" className="space-y-4">
+              <Button 
+                onClick={() => setMsgDialogOpen(true)}
+                className="w-full"
+              >
+                Configurar Mensagens
+              </Button>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Configuração de Mensagens */}
+      <Dialog open={msgDialogOpen} onOpenChange={setMsgDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configuração de Mensagens</DialogTitle>
+            <DialogDescription>
+              Defina as mensagens que serão utilizadas para integração com API de disparo
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mensagem Inicial</label>
+              <Textarea 
+                value={mensagens.mensagemInicial}
+                onChange={e => setMensagens({...mensagens, mensagemInicial: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Acionamento do Motorista</label>
+              <Textarea 
+                value={mensagens.acionamentoMotorista}
+                onChange={e => setMensagens({...mensagens, acionamentoMotorista: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estorno</label>
+              <Textarea 
+                value={mensagens.estorno}
+                onChange={e => setMensagens({...mensagens, estorno: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Troca de Doca</label>
+              <Textarea 
+                value={mensagens.trocaDoca}
+                onChange={e => setMensagens({...mensagens, trocaDoca: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Conclusão</label>
+              <Textarea 
+                value={mensagens.conclusao}
+                onChange={e => setMensagens({...mensagens, conclusao: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Desocupar a Doca</label>
+              <Textarea 
+                value={mensagens.desocuparDoca}
+                onChange={e => setMensagens({...mensagens, desocuparDoca: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Finalizar Processo</label>
+              <Textarea 
+                value={mensagens.finalizarProcesso}
+                onChange={e => setMensagens({...mensagens, finalizarProcesso: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Retorno de Finalizados</label>
+              <Textarea 
+                value={mensagens.retornoFinalizados}
+                onChange={e => setMensagens({...mensagens, retornoFinalizados: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Finalizar Processo (Insucesso)</label>
+              <Textarea 
+                value={mensagens.finalizarInsucesso}
+                onChange={e => setMensagens({...mensagens, finalizarInsucesso: e.target.value})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Confirmação de Cadastro de Motorista</label>
+              <Textarea 
+                value={mensagens.confirmacaoCadastro}
+                onChange={e => setMensagens({...mensagens, confirmacaoCadastro: e.target.value})}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={handleSaveMensagens} className="bg-blue-800 hover:bg-blue-900">
+              Salvar Mensagens
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

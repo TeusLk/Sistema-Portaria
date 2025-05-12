@@ -46,7 +46,9 @@ const Sidebar = () => {
       )}
     >
       <div className="flex items-center justify-between p-4 border-b">
-        {!collapsed && <h2 className="text-lg font-semibold text-bluePrimary">Sistema</h2>}
+        <Link to="/dashboard" className="text-lg font-semibold text-bluePrimary">
+          {!collapsed && <h2>Sistema</h2>}
+        </Link>
         <Button
           variant="ghost"
           size="icon"

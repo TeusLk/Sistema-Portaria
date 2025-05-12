@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "./Dashboard";
 import { 
   Table, 
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
   DialogContent, 
@@ -18,7 +20,7 @@ import {
   DialogTitle,
   DialogDescription 
 } from "@/components/ui/dialog";
-import { Check, Search, Calendar } from "lucide-react";
+import { Check, Search, Calendar, ArrowLeft } from "lucide-react";
 
 // This would be shared between Portaria and Historico
 interface ProcessoPortaria {
@@ -41,6 +43,7 @@ interface ProcessoPortaria {
 }
 
 const Historico = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchType, setSearchType] = useState<"romaneio" | "cpf" | "data">("romaneio");
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -113,7 +116,17 @@ const Historico = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Histórico de Portaria</h1>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate('/portaria')}
+              className="hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold text-gray-900">Histórico de Portaria</h1>
+          </div>
           <div className="flex items-center gap-2">
             <div className="flex">
               <button 
