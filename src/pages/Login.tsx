@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,28 +35,24 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate domain again before submission
-    const error = validateDomain(domain);
-    if (error) {
-      setDomainError(error);
-      return;
-    }
-    
     setIsLoading(true);
-    
-    // Simulação de login para fins de demonstração
-    // Isso será substituído pela autenticação real do Supabase após a integração
+
     try {
-      setTimeout(() => {
-        // Simula um login bem-sucedido
-        // Agora incluindo o domínio nos dados de login
-        console.log("Login data:", { domain, email, password });
+      const response = await fetch("http://localhost:8000/api/v1/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, domain }),
+      });
+      const data = await response.json();
+      if (response.ok) {
         toast.success("Login realizado com sucesso");
+        // Salve o usuário/token se for o caso
         navigate("/dashboard");
-      }, 1500);
+      } else {
+        toast.error(data.detail || "Erro ao fazer login");
+      }
     } catch (error) {
-      toast.error("Erro ao fazer login");
+      toast.error("Erro de conexão com o servidor");
     } finally {
       setIsLoading(false);
     }
