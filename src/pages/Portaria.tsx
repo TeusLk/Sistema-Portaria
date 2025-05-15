@@ -69,6 +69,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import { Timeline } from "@/components/Timeline";
+import { ArrowLeft } from "lucide-react";
 
 // Dados mockados para os processos
 const initialProcessos = [
@@ -231,6 +233,7 @@ const Portaria = () => {
   const [trocaDocaDialogOpen, setTrocaDocaDialogOpen] = useState(false);
   const [retrocessoDialogOpen, setRetrocessoDialogOpen] = useState(false);
   const [retrocessoProcessoId, setRetrocessoProcessoId] = useState<number | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
 
   const form = useForm({
     defaultValues: {
@@ -540,23 +543,54 @@ const Portaria = () => {
     setMsgDialogOpen(false);
   };
 
-  // Função para abrir o diálogo de detalhes
-  const handleRowClick = (processo: any) => {
-    setSelectedProcessDetails(processo);
-    setDetailDialogOpen(true);
+  // This function builds the timeline events for a specific process
+  const buildTimelineEvents = (processo: any) => {
+    const events = [];
+
+    // Validação
+    events.push({
+      type: 'validacao',
+      timestamp: processo.validadoEm || 'Pendente',
+      isActive: !!processo.validado
+    });
+
+    // Acionamento de Doca
+    events.push({
+      type: 'acionamento',
+      timestamp: processo.docaAlocadaEm || 'Pendente',
+      details: processo.doca ? `Doca designada: ${processo.doca}` : undefined,
+      isActive: !!processo.doca
+    });
+
+    // Em Doca
+    events.push({
+      type: 'em-doca',
+      timestamp: processo.emDocaEm || 'Pendente',
+      isActive: !!processo.emDoca
+    });
+
+    // Conclusão
+    events.push({
+      type: 'conclusao',
+      timestamp: processo.concluidoEm || 'Pendente',
+      isActive: !!processo.concluido
+    });
+
+    // Saída/Finalização
+    events.push({
+      type: 'saida',
+      timestamp: processo.saidaEm || 'Pendente',
+      isActive: !!processo.saida
+    });
+
+    return events;
   };
 
-  // Função para enviar mensagem
-  const handleSendMessage = () => {
-    if (!messageToSend.trim()) {
-      toast.error("Digite uma mensagem para enviar");
-      return;
-    }
-
-    // Aqui seria a implementação da API para envio da mensagem
-    toast.success(`Mensagem enviada para ${selectedProcessDetails?.motorista}`);
-    setSendMessageDialogOpen(false);
-    setMessageToSend("");
+  // Update the handleRowClick function to include timeline events
+  const handleRowClick = (processo: any) => {
+    setSelectedProcessDetails(processo);
+    setTimelineEvents(buildTimelineEvents(processo));
+    setDetailDialogOpen(true);
   };
 
   const filteredProcessos = processos.filter(processo => {
@@ -1401,6 +1435,67 @@ const Portaria = () => {
           <DialogFooter>
             <Button onClick={() => setEditItemDialog(false)} variant="outline">Cancelar</Button>
             <Button onClick={handleSaveEdit} className="bg-blue-800 hover:bg-blue-900">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para detalhes do processo com Timeline */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Detalhes do Processo #{selectedProcessDetails?.romaneio || ''}
+            </DialogTitle>
+            <DialogDescription>
+              Registrado em {selectedProcessDetails?.dataHora || ''}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Motorista</h3>
+              <p className="text-lg">{selectedProcessDetails?.motorista || ''}</p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">CPF</h3>
+              <p className="text-lg">{selectedProcessDetails?.cpfMotorista || ''}</p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Placa</h3>
+              <p className="text-lg">{selectedProcessDetails?.placa || ''}</p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Placa Carreta</h3>
+              <p className="text-lg">{selectedProcessDetails?.placaCarreta || 'N/A'}</p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Veículo</h3>
+              <p className="text-lg">{selectedProcessDetails?.veiculo || ''}</p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Tipo Movimentação</h3>
+              <p className="text-lg">{selectedProcessDetails?.tipoMov || ''}</p>
+            </div>
+          </div>
+          
+          {/* Linha do Tempo */}
+          <div className="border-t pt-4">
+            <Timeline events={timelineEvents} />
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setDetailDialogOpen(false)} variant="outline">
+              Fechar
+            </Button>
+            <Button 
+              onClick={() => {
+                setSendMessageDialogOpen(true);
+                setDetailDialogOpen(false);
+              }} 
+              className="bg-blue-800 hover:bg-blue-900"
+            >
+              Enviar Mensagem
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

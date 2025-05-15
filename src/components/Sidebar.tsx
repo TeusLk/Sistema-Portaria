@@ -3,16 +3,17 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, Settings } from "lucide-react";
 
 interface SidebarItemProps {
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   title: string;
   path: string;
   isActive: boolean;
+  collapsed: boolean;
 }
 
-const SidebarItem = ({ icon, title, path, isActive }: SidebarItemProps) => {
+const SidebarItem = ({ icon, title, path, isActive, collapsed }: SidebarItemProps) => {
   return (
     <Link to={path}>
       <div
@@ -21,9 +22,9 @@ const SidebarItem = ({ icon, title, path, isActive }: SidebarItemProps) => {
           isActive ? "bg-blue-100 text-bluePrimary font-medium" : "text-gray-600"
         )}
       >
-        {icon && <div className="w-5 h-5">{icon}</div>}
-        <span>{title}</span>
-        {isActive && <div className="ml-auto w-1 h-5 rounded-full bg-bluePrimary" />}
+        <div className="w-5 h-5">{icon}</div>
+        {!collapsed && <span>{title}</span>}
+        {isActive && !collapsed && <div className="ml-auto w-1 h-5 rounded-full bg-bluePrimary" />}
       </div>
     </Link>
   );
@@ -34,7 +35,7 @@ const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   
   const menuItems = [
-    { title: "Portaria", path: "/portaria" },
+    { title: "Portaria", path: "/portaria", icon: <Menu className="h-5 w-5" /> },
     // Outros itens do menu serão adicionados posteriormente
   ];
 
@@ -64,15 +65,30 @@ const Sidebar = () => {
           {menuItems.map((item) => (
             <SidebarItem
               key={item.path}
-              title={!collapsed ? item.title : ""}
+              title={item.title}
               path={item.path}
+              icon={item.icon}
               isActive={location.pathname === item.path}
+              collapsed={collapsed}
             />
           ))}
         </nav>
       </div>
       
       <div className="border-t p-4">
+        {/* Configurações button */}
+        <Button 
+          variant="ghost" 
+          className={cn(
+            "w-full justify-start text-gray-600 hover:text-gray-800 mb-2",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <Settings className="mr-2 h-4 w-4" />
+          {!collapsed && "Configurações"}
+        </Button>
+        
+        {/* Sair button */}
         <Button 
           variant="ghost" 
           className={cn(
