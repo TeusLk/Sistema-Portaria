@@ -70,7 +70,6 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { Timeline } from "@/components/Timeline";
-import { ArrowLeft } from "lucide-react";
 
 // Dados mockados para os processos
 const initialProcessos = [
