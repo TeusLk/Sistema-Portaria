@@ -23,7 +23,8 @@ import {
   Edit,
   Trash2,
   Clock,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from "lucide-react";
 import {
   Dialog,
@@ -222,11 +223,14 @@ const Portaria = () => {
     newValue: ''
   });
   
-  // Novo estado para o diálogo de detalhes do processo
+  // Add missing state variables for dialog and process handling
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedProcessDetails, setSelectedProcessDetails] = useState<any>(null);
   const [sendMessageDialogOpen, setSendMessageDialogOpen] = useState(false);
   const [messageToSend, setMessageToSend] = useState("");
+  const [trocaDocaDialogOpen, setTrocaDocaDialogOpen] = useState(false);
+  const [retrocessoDialogOpen, setRetrocessoDialogOpen] = useState(false);
+  const [retrocessoProcessoId, setRetrocessoProcessoId] = useState<number | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -339,6 +343,83 @@ const Portaria = () => {
     setSelectedDoca(null);
   };
 
+  const handleTrocaDocaClick = (id: number) => {
+    setSelectedProcessId(id);
+    setTrocaDocaDialogOpen(true);
+  };
+
+  const handleRetrocessoClick = (id: number) => {
+    setRetrocessoProcessoId(id);
+    setRetrocessoDialogOpen(true);
+  };
+
+  const handleTrocaDoca = () => {
+    if (!selectedProcessId || !selectedDoca) return;
+    
+    const formattedDateTime = getCurrentFormattedDateTime();
+    
+    setProcessos(prev => 
+      prev.map(processo => 
+        processo.id === selectedProcessId
+          ? { 
+              ...processo, 
+              doca: selectedDoca, 
+              docaAlocadaEm: formattedDateTime
+            }
+          : processo
+      )
+    );
+    
+    toast.success(`Doca alterada para ${selectedDoca}`);
+    setTrocaDocaDialogOpen(false);
+    setSelectedProcessId(null);
+    setSelectedDoca(null);
+  };
+
+  const handleRetrocessoProcess = () => {
+    if (!retrocessoProcessoId) return;
+    
+    const processo = processos.find(p => p.id === retrocessoProcessoId);
+    if (!processo) return;
+    
+    // Logic to undo the last confirmed action
+    if (processo.saida) {
+      setProcessos(prev =>
+        prev.map(p =>
+          p.id === retrocessoProcessoId ? { ...p, saida: false, saidaEm: "" } : p
+        )
+      );
+    } else if (processo.concluido) {
+      setProcessos(prev =>
+        prev.map(p =>
+          p.id === retrocessoProcessoId ? { ...p, concluido: false, concluidoEm: "" } : p
+        )
+      );
+    } else if (processo.emDoca) {
+      setProcessos(prev =>
+        prev.map(p =>
+          p.id === retrocessoProcessoId ? { ...p, emDoca: false, emDocaEm: "" } : p
+        )
+      );
+    } else if (processo.doca) {
+      setProcessos(prev =>
+        prev.map(p =>
+          p.id === retrocessoProcessoId ? { ...p, doca: null, docaAlocadaEm: "" } : p
+        )
+      );
+    } else if (processo.validado) {
+      setProcessos(prev =>
+        prev.map(p =>
+          p.id === retrocessoProcessoId ? { ...p, validado: false, validadoEm: "" } : p
+        )
+      );
+    }
+    
+    toast.success("Processo retrocedido com sucesso");
+    setRetrocessoDialogOpen(false);
+    setRetrocessoProcessoId(null);
+  };
+
   const handleNovaPortariaSubmit = (data: any) => {
     const requiredFields = ['tipoMovimentacao', 'nomeMotorista', 'placaCavalo', 'tipoVeiculo'];
     const missingFields = requiredFields.filter(field => !data[field]);
@@ -363,6 +444,7 @@ const Portaria = () => {
       placa: data.placaCavalo,
       placaCarreta: data.placaCarreta,
       veiculo: data.tipoVeiculo,
+      transportadora: "", // Add empty transportadora field to fix type issue
       cnh: data.cnh,
       validado: false,
       validadoEm: "",

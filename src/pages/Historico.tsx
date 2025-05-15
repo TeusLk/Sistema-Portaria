@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "./Dashboard";
@@ -22,7 +21,7 @@ import {
   DialogFooter 
 } from "@/components/ui/dialog";
 import { Check, Search, Calendar, ArrowLeft, MessageSquare, Clock } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 // This would be shared between Portaria and Historico
 interface ProcessoPortaria {
@@ -117,17 +116,14 @@ const Historico = () => {
   // Function to handle sending messages to drivers
   const handleSendMessage = () => {
     if (!messageToSend.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
+      toast.error("Erro", {
         description: "Digite uma mensagem para enviar"
       });
       return;
     }
 
     // Here would be the implementation of the API for sending the message
-    toast({
-      title: "Sucesso",
+    toast.success("Sucesso", {
       description: `Mensagem enviada para ${selectedProcesso?.motorista}`
     });
     setSendMessageDialogOpen(false);
@@ -172,7 +168,7 @@ const Historico = () => {
                 onClick={() => setSearchType("romaneio")} 
                 className={`px-3 py-1 text-sm ${searchType === "romaneio" 
                   ? "bg-blue-800 text-white" 
-                  : "bg-gray-200 text-gray-700"} rounded-l-md`}
+                  : "bg-gray-200 text-gray-700"}`}
               >
                 Romaneio
               </button>
