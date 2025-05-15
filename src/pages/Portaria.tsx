@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "./Dashboard";
@@ -169,9 +168,6 @@ const initialProcessos = [
 // Lista de docas disponíveis
 const docas = Array.from({ length: 18 }, (_, i) => `DOCA ${String(i + 1).padStart(2, '0')}`);
 
-// Lista de transportadoras
-const transportadoras = ["Transportadora A", "Transportadora B", "Transportadora C", "Transportadora D"];
-
 // Lista de tipos de veículos
 const tiposVeiculos = ["Van", "Caminhão 3/4", "Caminhão Baú", "Carreta", "Bitrem", "Rodotrem"];
 
@@ -238,8 +234,7 @@ const Portaria = () => {
       romaneio: "",
       cpfMotorista: "",
       nomeMotorista: "",
-      statusCnh: "",
-      transportadora: "",
+      cnh: "",
       placaCavalo: "",
       placaCarreta: "",
       tipoVeiculo: "",
@@ -286,7 +281,6 @@ const Portaria = () => {
           ? { 
               ...processo, 
               [currentAction.field]: true,
-              // Adicionar timestamp para o campo correspondente
               ...(currentAction.field === 'validado' ? { validadoEm: formattedDateTime } : {}),
               ...(currentAction.field === 'emDoca' ? { emDocaEm: formattedDateTime } : {}),
               ...(currentAction.field === 'concluido' ? { concluidoEm: formattedDateTime } : {}),
@@ -333,7 +327,6 @@ const Portaria = () => {
               ...processo, 
               doca: selectedDoca, 
               docaAlocadaEm: formattedDateTime,
-              // Corrigido: não definir emDoca automaticamente
               emDoca: false 
             }
           : processo
@@ -347,7 +340,7 @@ const Portaria = () => {
   };
 
   const handleNovaPortariaSubmit = (data: any) => {
-    const requiredFields = ['tipoMovimentacao', 'nomeMotorista', 'transportadora', 'placaCavalo', 'tipoVeiculo'];
+    const requiredFields = ['tipoMovimentacao', 'nomeMotorista', 'placaCavalo', 'tipoVeiculo'];
     const missingFields = requiredFields.filter(field => !data[field]);
     
     if (missingFields.length > 0) {
@@ -370,7 +363,7 @@ const Portaria = () => {
       placa: data.placaCavalo,
       placaCarreta: data.placaCarreta,
       veiculo: data.tipoVeiculo,
-      transportadora: data.transportadora,
+      cnh: data.cnh,
       validado: false,
       validadoEm: "",
       doca: null,
@@ -612,12 +605,13 @@ const Portaria = () => {
                 <TableHead>Em Doca</TableHead>
                 <TableHead>Conclusão</TableHead>
                 <TableHead>Saída</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {processos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-6 text-gray-500">
+                  <TableCell colSpan={12} className="text-center py-6 text-gray-500">
                     Nenhum processo em andamento
                   </TableCell>
                 </TableRow>
@@ -710,6 +704,32 @@ const Portaria = () => {
                         )}
                       </button>
                     </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1">
+                        {processo.doca && !processo.saida && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0" 
+                            onClick={() => handleTrocaDocaClick(processo.id)}
+                            title="Trocar doca"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {processo.validado && !processo.saida && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-orange-500 hover:text-orange-700" 
+                            onClick={() => handleRetrocessoClick(processo.id)}
+                            title="Retroceder processo"
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -768,6 +788,62 @@ const Portaria = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog para Trocar Doca */}
+      <Dialog open={trocaDocaDialogOpen} onOpenChange={setTrocaDocaDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trocar Doca</DialogTitle>
+            <DialogDescription>
+              Selecione a nova doca para a qual o motorista deve ser direcionado
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={selectedDoca || ""} onValueChange={setSelectedDoca}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar doca" />
+              </SelectTrigger>
+              <SelectContent>
+                {docasList.map((doca) => (
+                  <SelectItem key={doca} value={doca}>
+                    {doca}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleTrocaDoca} 
+              className="bg-blue-800 hover:bg-blue-900"
+              disabled={!selectedDoca}
+            >
+              Confirmar Troca
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Retroceder Processo */}
+      <AlertDialog open={retrocessoDialogOpen} onOpenChange={setRetrocessoDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retroceder Processo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação irá desfazer a última etapa confirmada do processo. Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRetrocessoProcessoId(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRetrocessoProcess}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              Retroceder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog para Nova Portaria */}
       <Dialog open={novaPortariaOpen} onOpenChange={setNovaPortariaOpen}>
@@ -851,32 +927,12 @@ const Portaria = () => {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Status CNH</label>
+                <label className="text-sm font-medium">CNH</label>
                 <Input 
-                  {...form.register("statusCnh")}
-                  placeholder="Status da CNH"
+                  {...form.register("cnh")}
+                  placeholder="Número da CNH"
+                  type="number"
                 />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Transportadora <span className="text-red-500">*</span>
-                </label>
-                <Select
-                  value={form.watch("transportadora")}
-                  onValueChange={value => form.setValue("transportadora", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a transportadora" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {transportadoras.map((transp) => (
-                      <SelectItem key={transp} value={transp}>
-                        {transp}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               
               <div className="space-y-2">
@@ -884,18 +940,18 @@ const Portaria = () => {
                   Placa Cavalo <span className="text-red-500">*</span>
                 </label>
                 <InputMask
-                  mask="aaa-9999"
+                  mask="aaa-9a99"
                   value={form.watch("placaCavalo")}
                   onChange={e => form.setValue("placaCavalo", e.target.value.toUpperCase())}
                   formatChars={{
                     '9': '[0-9]',
-                    'a': '[A-Za-z]'
+                    'a': '[A-Za-z0-9]'
                   }}
                 >
                   {(inputProps: any) => (
                     <Input 
                       {...inputProps}
-                      placeholder="ABC-1234"
+                      placeholder="ABC-1234 ou ABC-1A23"
                     />
                   )}
                 </InputMask>
@@ -904,18 +960,18 @@ const Portaria = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Placa Carreta</label>
                 <InputMask
-                  mask="aaa-9999"
+                  mask="aaa-9a99"
                   value={form.watch("placaCarreta")}
                   onChange={e => form.setValue("placaCarreta", e.target.value.toUpperCase())}
                   formatChars={{
                     '9': '[0-9]',
-                    'a': '[A-Za-z]'
+                    'a': '[A-Za-z0-9]'
                   }}
                 >
                   {(inputProps: any) => (
                     <Input 
                       {...inputProps}
-                      placeholder="ABC-1234"
+                      placeholder="ABC-1234 ou ABC-1A23"
                     />
                   )}
                 </InputMask>
@@ -1263,265 +1319,6 @@ const Portaria = () => {
           <DialogFooter>
             <Button onClick={() => setEditItemDialog(false)} variant="outline">Cancelar</Button>
             <Button onClick={handleSaveEdit} className="bg-blue-800 hover:bg-blue-900">Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Popup de Detalhamento da Linha */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhes do Processo #{selectedProcessDetails?.romaneio}</DialogTitle>
-            <DialogDescription>
-              Informações completas do processo e linha do tempo
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedProcessDetails && (
-            <div className="space-y-6">
-              {/* Dados do processo em grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Informações Gerais</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Data e Hora:</span>
-                      <span className="font-medium">{selectedProcessDetails.dataHora}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Romaneio:</span>
-                      <span className="font-medium">{selectedProcessDetails.romaneio}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Tipo Movimentação:</span>
-                      <Badge className="bg-emerald-700 text-white">
-                        {selectedProcessDetails.tipoMov}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Dados do Motorista</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Nome:</span>
-                      <span className="font-medium">{selectedProcessDetails.motorista}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">CPF:</span>
-                      <span className="font-medium">{selectedProcessDetails.cpfMotorista}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Telefone:</span>
-                      <span className="font-medium">{selectedProcessDetails.telefoneMotorista}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Dados do Veículo</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Placa Cavalo:</span>
-                      <span className="font-medium">{selectedProcessDetails.placa}</span>
-                    </div>
-                    {selectedProcessDetails.placaCarreta && (
-                      <div className="flex justify-between bg-gray-50 p-2 rounded">
-                        <span className="text-sm text-gray-500">Placa Carreta:</span>
-                        <span className="font-medium">{selectedProcessDetails.placaCarreta}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Tipo de Veículo:</span>
-                      <span className="font-medium">{selectedProcessDetails.veiculo}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Transportadora:</span>
-                      <span className="font-medium">{selectedProcessDetails.transportadora}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Status do Processo</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Validado:</span>
-                      <span className="font-medium">{selectedProcessDetails.validado ? "Sim" : "Não"}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Doca:</span>
-                      <span className="font-medium">{selectedProcessDetails.doca || "Não alocado"}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Em Doca:</span>
-                      <span className="font-medium">{selectedProcessDetails.emDoca ? "Sim" : "Não"}</span>
-                    </div>
-                    <div className="flex justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-500">Concluído:</span>
-                      <span className="font-medium">{selectedProcessDetails.concluido ? "Sim" : "Não"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Linha do Tempo */}
-              <div>
-                <h3 className="text-sm font-semibold mb-4">Linha do Tempo dos Eventos</h3>
-                <div className="space-y-4 border-l-2 border-blue-200 pl-4 ml-4">
-                  <div className="relative">
-                    <div className="absolute -left-[1.45rem] bg-blue-500 rounded-full p-1">
-                      <Clock className="h-3 w-3 text-white" />
-                    </div>
-                    <div className="mb-1 flex justify-between">
-                      <p className="text-sm font-medium">Registro no Sistema</p>
-                      <p className="text-xs text-gray-500">{selectedProcessDetails.dataHora}</p>
-                    </div>
-                    <p className="text-xs text-gray-600">Processo registrado na portaria</p>
-                  </div>
-                  
-                  {selectedProcessDetails.validadoEm && (
-                    <div className="relative">
-                      <div className="absolute -left-[1.45rem] bg-green-500 rounded-full p-1">
-                        <Clock className="h-3 w-3 text-white" />
-                      </div>
-                      <div className="mb-1 flex justify-between">
-                        <p className="text-sm font-medium">Validação</p>
-                        <p className="text-xs text-gray-500">{selectedProcessDetails.validadoEm}</p>
-                      </div>
-                      <p className="text-xs text-gray-600">Processo validado pelo operador</p>
-                    </div>
-                  )}
-                  
-                  {selectedProcessDetails.docaAlocadaEm && (
-                    <div className="relative">
-                      <div className="absolute -left-[1.45rem] bg-yellow-500 rounded-full p-1">
-                        <Clock className="h-3 w-3 text-white" />
-                      </div>
-                      <div className="mb-1 flex justify-between">
-                        <p className="text-sm font-medium">Acionamento</p>
-                        <p className="text-xs text-gray-500">{selectedProcessDetails.docaAlocadaEm}</p>
-                      </div>
-                      <p className="text-xs text-gray-600">Motorista acionado para {selectedProcessDetails.doca}</p>
-                    </div>
-                  )}
-                  
-                  {selectedProcessDetails.emDocaEm && (
-                    <div className="relative">
-                      <div className="absolute -left-[1.45rem] bg-orange-500 rounded-full p-1">
-                        <Clock className="h-3 w-3 text-white" />
-                      </div>
-                      <div className="mb-1 flex justify-between">
-                        <p className="text-sm font-medium">Entrada em Doca</p>
-                        <p className="text-xs text-gray-500">{selectedProcessDetails.emDocaEm}</p>
-                      </div>
-                      <p className="text-xs text-gray-600">Veículo posicionado na doca</p>
-                    </div>
-                  )}
-                  
-                  {selectedProcessDetails.concluidoEm && (
-                    <div className="relative">
-                      <div className="absolute -left-[1.45rem] bg-purple-500 rounded-full p-1">
-                        <Clock className="h-3 w-3 text-white" />
-                      </div>
-                      <div className="mb-1 flex justify-between">
-                        <p className="text-sm font-medium">Conclusão</p>
-                        <p className="text-xs text-gray-500">{selectedProcessDetails.concluidoEm}</p>
-                      </div>
-                      <p className="text-xs text-gray-600">Operação concluída</p>
-                    </div>
-                  )}
-                  
-                  {selectedProcessDetails.saidaEm && (
-                    <div className="relative">
-                      <div className="absolute -left-[1.45rem] bg-red-500 rounded-full p-1">
-                        <Clock className="h-3 w-3 text-white" />
-                      </div>
-                      <div className="mb-1 flex justify-between">
-                        <p className="text-sm font-medium">Saída</p>
-                        <p className="text-xs text-gray-500">{selectedProcessDetails.saidaEm}</p>
-                      </div>
-                      <p className="text-xs text-gray-600">Veículo liberado da portaria</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Ações */}
-              <div className="flex justify-end space-x-3 mt-4">
-                <Button 
-                  variant="outline"
-                  onClick={() => setDetailDialogOpen(false)}
-                >
-                  Fechar
-                </Button>
-                <Button 
-                  onClick={() => setSendMessageDialogOpen(true)}
-                  className="bg-blue-800 hover:bg-blue-900"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Enviar Mensagem
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para Enviar Mensagem ao Motorista */}
-      <Dialog open={sendMessageDialogOpen} onOpenChange={setSendMessageDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Enviar Mensagem ao Motorista</DialogTitle>
-            <DialogDescription>
-              A mensagem será enviada ao telefone {selectedProcessDetails?.telefoneMotorista}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea 
-              placeholder="Digite a mensagem para o motorista..."
-              value={messageToSend}
-              onChange={e => setMessageToSend(e.target.value)}
-              className="min-h-[100px]"
-            />
-            
-            <div className="mt-3">
-              <p className="text-xs text-gray-500 mb-2">Mensagens rápidas:</p>
-              <div className="flex flex-wrap gap-2">
-                <Badge 
-                  className="cursor-pointer hover:bg-blue-700" 
-                  onClick={() => setMessageToSend(mensagens.acionamentoMotorista)}
-                >
-                  Acionar
-                </Badge>
-                <Badge 
-                  className="cursor-pointer hover:bg-blue-700" 
-                  onClick={() => setMessageToSend(mensagens.desocuparDoca)}
-                >
-                  Desocupar
-                </Badge>
-                <Badge 
-                  className="cursor-pointer hover:bg-blue-700" 
-                  onClick={() => setMessageToSend(mensagens.trocaDoca)}
-                >
-                  Trocar Doca
-                </Badge>
-                <Badge 
-                  className="cursor-pointer hover:bg-blue-700" 
-                  onClick={() => setMessageToSend(mensagens.conclusao)}
-                >
-                  Concluir
-                </Badge>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setSendMessageDialogOpen(false)} variant="outline">Cancelar</Button>
-            <Button onClick={handleSendMessage} className="bg-blue-800 hover:bg-blue-900">
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Enviar
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

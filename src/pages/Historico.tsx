@@ -18,9 +18,11 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogDescription 
+  DialogDescription,
+  DialogFooter 
 } from "@/components/ui/dialog";
-import { Check, Search, Calendar, ArrowLeft } from "lucide-react";
+import { Check, Search, Calendar, ArrowLeft, MessageSquare, Clock } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 // This would be shared between Portaria and Historico
 interface ProcessoPortaria {
@@ -36,10 +38,15 @@ interface ProcessoPortaria {
   veiculo: string;
   transportadora?: string;
   validado: boolean;
+  validadoEm?: string;
   doca: string | null;
+  docaAlocadaEm?: string;
   emDoca: boolean;
+  emDocaEm?: string;
   concluido: boolean;
+  concluidoEm?: string;
   saida: boolean;
+  saidaEm?: string;
 }
 
 const Historico = () => {
@@ -48,9 +55,11 @@ const Historico = () => {
   const [searchType, setSearchType] = useState<"romaneio" | "cpf" | "data">("romaneio");
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedProcesso, setSelectedProcesso] = useState<ProcessoPortaria | null>(null);
+  const [sendMessageDialogOpen, setSendMessageDialogOpen] = useState(false);
+  const [messageToSend, setMessageToSend] = useState("");
   
   // Historically completed processes would come from a context, localStorage or an API
-  // For now we'll use mock data
+  // For now we'll use mock data with timestamps for events
   const [historicalProcessos] = useState<ProcessoPortaria[]>([
     {
       id: 5,
@@ -65,10 +74,15 @@ const Historico = () => {
       veiculo: "Carreta",
       transportadora: "Transportadora A",
       validado: true,
+      validadoEm: "12/05/2025 13:50",
       doca: "DOCA 02",
+      docaAlocadaEm: "12/05/2025 13:55",
       emDoca: true,
+      emDocaEm: "12/05/2025 14:05",
       concluido: true,
-      saida: true
+      concluidoEm: "12/05/2025 15:30",
+      saida: true,
+      saidaEm: "12/05/2025 15:45"
     },
     {
       id: 3,
@@ -83,16 +97,41 @@ const Historico = () => {
       veiculo: "Bitrem",
       transportadora: "Transportadora C",
       validado: true,
+      validadoEm: "11/05/2025 10:20",
       doca: "DOCA 05",
+      docaAlocadaEm: "11/05/2025 10:25",
       emDoca: true,
+      emDocaEm: "11/05/2025 10:40",
       concluido: true,
-      saida: true
+      concluidoEm: "11/05/2025 11:30",
+      saida: true,
+      saidaEm: "11/05/2025 11:45"
     }
   ]);
 
   const handleRowClick = (processo: ProcessoPortaria) => {
     setSelectedProcesso(processo);
     setIsDetailOpen(true);
+  };
+
+  // Function to handle sending messages to drivers
+  const handleSendMessage = () => {
+    if (!messageToSend.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Digite uma mensagem para enviar"
+      });
+      return;
+    }
+
+    // Here would be the implementation of the API for sending the message
+    toast({
+      title: "Sucesso",
+      description: `Mensagem enviada para ${selectedProcesso?.motorista}`
+    });
+    setSendMessageDialogOpen(false);
+    setMessageToSend("");
   };
 
   const filteredProcessos = historicalProcessos.filter(processo => {
@@ -218,9 +257,9 @@ const Historico = () => {
         </div>
       </div>
 
-      {/* Dialog para detalhes do processo */}
+      {/* Dialog para detalhes do processo com linha do tempo */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           {selectedProcesso && (
             <>
               <DialogHeader>
@@ -230,73 +269,224 @@ const Historico = () => {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="grid grid-cols-2 gap-4 py-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Data e Hora</p>
-                  <p className="text-base">{selectedProcesso.dataHora}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Romaneio</p>
-                  <p className="text-base">{selectedProcesso.romaneio}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Tipo de Movimentação</p>
-                  <Badge className="bg-emerald-700 mt-1">
-                    {selectedProcesso.tipoMov}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Motorista</p>
-                  <p className="text-base">{selectedProcesso.motorista}</p>
-                </div>
-                {selectedProcesso.cpfMotorista && (
+              <div className="space-y-6">
+                {/* Dados do processo em grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">CPF</p>
-                    <p className="text-base">{selectedProcesso.cpfMotorista}</p>
+                    <h3 className="text-sm font-semibold mb-2">Informações Gerais</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Data e Hora:</span>
+                        <span className="font-medium">{selectedProcesso.dataHora}</span>
+                      </div>
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Romaneio:</span>
+                        <span className="font-medium">{selectedProcesso.romaneio}</span>
+                      </div>
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Tipo Movimentação:</span>
+                        <Badge className="bg-emerald-700 text-white">
+                          {selectedProcesso.tipoMov}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                )}
-                {selectedProcesso.telefoneMotorista && (
+                  
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Telefone</p>
-                    <p className="text-base">{selectedProcesso.telefoneMotorista}</p>
+                    <h3 className="text-sm font-semibold mb-2">Dados do Motorista</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Nome:</span>
+                        <span className="font-medium">{selectedProcesso.motorista}</span>
+                      </div>
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">CPF:</span>
+                        <span className="font-medium">{selectedProcesso.cpfMotorista}</span>
+                      </div>
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Telefone:</span>
+                        <span className="font-medium">{selectedProcesso.telefoneMotorista}</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Placa</p>
-                  <p className="text-base">{selectedProcesso.placa}</p>
-                </div>
-                {selectedProcesso.placaCarreta && (
+                  
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Placa Carreta</p>
-                    <p className="text-base">{selectedProcesso.placaCarreta}</p>
+                    <h3 className="text-sm font-semibold mb-2">Dados do Veículo</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Placa Cavalo:</span>
+                        <span className="font-medium">{selectedProcesso.placa}</span>
+                      </div>
+                      {selectedProcesso.placaCarreta && (
+                        <div className="flex justify-between bg-gray-50 p-2 rounded">
+                          <span className="text-sm text-gray-500">Placa Carreta:</span>
+                          <span className="font-medium">{selectedProcesso.placaCarreta}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Tipo de Veículo:</span>
+                        <span className="font-medium">{selectedProcesso.veiculo}</span>
+                      </div>
+                      {selectedProcesso.transportadora && (
+                        <div className="flex justify-between bg-gray-50 p-2 rounded">
+                          <span className="text-sm text-gray-500">Transportadora:</span>
+                          <span className="font-medium">{selectedProcesso.transportadora}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Veículo</p>
-                  <p className="text-base">{selectedProcesso.veiculo}</p>
-                </div>
-                {selectedProcesso.transportadora && (
+                  
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Transportadora</p>
-                    <p className="text-base">{selectedProcesso.transportadora}</p>
+                    <h3 className="text-sm font-semibold mb-2">Status do Processo</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Validado:</span>
+                        <span className="font-medium">{selectedProcesso.validado ? "Sim" : "Não"}</span>
+                      </div>
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Doca:</span>
+                        <span className="font-medium">{selectedProcesso.doca || "Não alocado"}</span>
+                      </div>
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Em Doca:</span>
+                        <span className="font-medium">{selectedProcesso.emDoca ? "Sim" : "Não"}</span>
+                      </div>
+                      <div className="flex justify-between bg-gray-50 p-2 rounded">
+                        <span className="text-sm text-gray-500">Concluído:</span>
+                        <span className="font-medium">{selectedProcesso.concluido ? "Sim" : "Não"}</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Doca</p>
-                  <p className="text-base">{selectedProcesso.doca || "N/A"}</p>
                 </div>
-                <div className="col-span-2">
-                  <p className="text-sm font-medium text-gray-500">Status</p>
-                  <div className="flex gap-2 mt-1">
-                    <Badge className="bg-green-500">Validado</Badge>
-                    <Badge className="bg-green-500">Em Doca</Badge>
-                    <Badge className="bg-green-500">Concluído</Badge>
-                    <Badge className="bg-green-500">Finalizado</Badge>
+                
+                {/* Linha do Tempo */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-4">Linha do Tempo dos Eventos</h3>
+                  <div className="space-y-4 border-l-2 border-blue-200 pl-4 ml-4">
+                    <div className="relative">
+                      <div className="absolute -left-[1.45rem] bg-blue-500 rounded-full p-1">
+                        <Clock className="h-3 w-3 text-white" />
+                      </div>
+                      <div className="mb-1 flex justify-between">
+                        <p className="text-sm font-medium">Registro no Sistema</p>
+                        <p className="text-xs text-gray-500">{selectedProcesso.dataHora}</p>
+                      </div>
+                      <p className="text-xs text-gray-600">Processo registrado na portaria</p>
+                    </div>
+                    
+                    {selectedProcesso.validadoEm && (
+                      <div className="relative">
+                        <div className="absolute -left-[1.45rem] bg-green-500 rounded-full p-1">
+                          <Clock className="h-3 w-3 text-white" />
+                        </div>
+                        <div className="mb-1 flex justify-between">
+                          <p className="text-sm font-medium">Validação</p>
+                          <p className="text-xs text-gray-500">{selectedProcesso.validadoEm}</p>
+                        </div>
+                        <p className="text-xs text-gray-600">Processo validado pelo operador</p>
+                      </div>
+                    )}
+                    
+                    {selectedProcesso.docaAlocadaEm && (
+                      <div className="relative">
+                        <div className="absolute -left-[1.45rem] bg-yellow-500 rounded-full p-1">
+                          <Clock className="h-3 w-3 text-white" />
+                        </div>
+                        <div className="mb-1 flex justify-between">
+                          <p className="text-sm font-medium">Acionamento</p>
+                          <p className="text-xs text-gray-500">{selectedProcesso.docaAlocadaEm}</p>
+                        </div>
+                        <p className="text-xs text-gray-600">Motorista acionado para {selectedProcesso.doca}</p>
+                      </div>
+                    )}
+                    
+                    {selectedProcesso.emDocaEm && (
+                      <div className="relative">
+                        <div className="absolute -left-[1.45rem] bg-orange-500 rounded-full p-1">
+                          <Clock className="h-3 w-3 text-white" />
+                        </div>
+                        <div className="mb-1 flex justify-between">
+                          <p className="text-sm font-medium">Entrada em Doca</p>
+                          <p className="text-xs text-gray-500">{selectedProcesso.emDocaEm}</p>
+                        </div>
+                        <p className="text-xs text-gray-600">Veículo posicionado na doca</p>
+                      </div>
+                    )}
+                    
+                    {selectedProcesso.concluidoEm && (
+                      <div className="relative">
+                        <div className="absolute -left-[1.45rem] bg-purple-500 rounded-full p-1">
+                          <Clock className="h-3 w-3 text-white" />
+                        </div>
+                        <div className="mb-1 flex justify-between">
+                          <p className="text-sm font-medium">Conclusão</p>
+                          <p className="text-xs text-gray-500">{selectedProcesso.concluidoEm}</p>
+                        </div>
+                        <p className="text-xs text-gray-600">Operação concluída</p>
+                      </div>
+                    )}
+                    
+                    {selectedProcesso.saidaEm && (
+                      <div className="relative">
+                        <div className="absolute -left-[1.45rem] bg-red-500 rounded-full p-1">
+                          <Clock className="h-3 w-3 text-white" />
+                        </div>
+                        <div className="mb-1 flex justify-between">
+                          <p className="text-sm font-medium">Saída</p>
+                          <p className="text-xs text-gray-500">{selectedProcesso.saidaEm}</p>
+                        </div>
+                        <p className="text-xs text-gray-600">Veículo liberado da portaria</p>
+                      </div>
+                    )}
                   </div>
+                </div>
+                
+                {/* Ações */}
+                <div className="flex justify-end space-x-3 mt-4">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setIsDetailOpen(false)}
+                  >
+                    Fechar
+                  </Button>
+                  <Button 
+                    onClick={() => setSendMessageDialogOpen(true)}
+                    className="bg-blue-800 hover:bg-blue-900"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Enviar Mensagem
+                  </Button>
                 </div>
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Enviar Mensagem ao Motorista */}
+      <Dialog open={sendMessageDialogOpen} onOpenChange={setSendMessageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar Mensagem ao Motorista</DialogTitle>
+            <DialogDescription>
+              A mensagem será enviada ao telefone {selectedProcesso?.telefoneMotorista}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <textarea 
+              placeholder="Digite a mensagem para o motorista..."
+              value={messageToSend}
+              onChange={e => setMessageToSend(e.target.value)}
+              className="w-full min-h-[100px] p-2 border rounded-md"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setSendMessageDialogOpen(false)} variant="outline">Cancelar</Button>
+            <Button onClick={handleSendMessage} className="bg-blue-800 hover:bg-blue-900">
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Enviar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
