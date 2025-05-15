@@ -223,12 +223,11 @@ const Portaria = () => {
     value: '',
     newValue: ''
   });
-  
-  // Add missing state variables for dialog and process handling
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedProcessDetails, setSelectedProcessDetails] = useState<any>(null);
   const [sendMessageDialogOpen, setSendMessageDialogOpen] = useState(false);
   const [messageToSend, setMessageToSend] = useState("");
+  const [predefinedMessage, setPredefinedMessage] = useState("");
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedProcessDetails, setSelectedProcessDetails] = useState<any>(null);
   const [trocaDocaDialogOpen, setTrocaDocaDialogOpen] = useState(false);
   const [retrocessoDialogOpen, setRetrocessoDialogOpen] = useState(false);
   const [retrocessoProcessoId, setRetrocessoProcessoId] = useState<number | null>(null);
@@ -608,6 +607,25 @@ const Portaria = () => {
         return true;
     }
   });
+
+  // Function to handle sending a message
+  const handleSendMessage = () => {
+    if (!messageToSend) {
+      toast.error("Digite uma mensagem para enviar");
+      return;
+    }
+    
+    // Here you would integrate with your actual messaging system
+    toast.success(`Mensagem enviada com sucesso para ${selectedProcessDetails?.motorista}`);
+    setSendMessageDialogOpen(false);
+    setMessageToSend("");
+  };
+
+  // Function to select a predefined message
+  const handleSelectPredefinedMessage = (messageKey: keyof typeof mensagens) => {
+    setMessageToSend(mensagens[messageKey]);
+    setPredefinedMessage(messageKey);
+  };
 
   return (
     <DashboardLayout>
@@ -1494,6 +1512,103 @@ const Portaria = () => {
               className="bg-blue-800 hover:bg-blue-900"
             >
               Enviar Mensagem
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Enviar Mensagem Personalizada */}
+      <Dialog open={sendMessageDialogOpen} onOpenChange={setSendMessageDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Enviar Mensagem</DialogTitle>
+            <DialogDescription>
+              Envie uma mensagem personalizada para {selectedProcessDetails?.motorista}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mensagens Predefinidas</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant={predefinedMessage === "mensagemInicial" ? "default" : "outline"} 
+                  onClick={() => handleSelectPredefinedMessage("mensagemInicial")} 
+                  className="text-xs h-auto py-2 justify-start"
+                >
+                  Mensagem Inicial
+                </Button>
+                <Button 
+                  variant={predefinedMessage === "acionamentoMotorista" ? "default" : "outline"} 
+                  onClick={() => handleSelectPredefinedMessage("acionamentoMotorista")} 
+                  className="text-xs h-auto py-2 justify-start"
+                >
+                  Acionamento
+                </Button>
+                <Button 
+                  variant={predefinedMessage === "trocaDoca" ? "default" : "outline"} 
+                  onClick={() => handleSelectPredefinedMessage("trocaDoca")} 
+                  className="text-xs h-auto py-2 justify-start"
+                >
+                  Troca de Doca
+                </Button>
+                <Button 
+                  variant={predefinedMessage === "conclusao" ? "default" : "outline"} 
+                  onClick={() => handleSelectPredefinedMessage("conclusao")} 
+                  className="text-xs h-auto py-2 justify-start"
+                >
+                  Conclusão
+                </Button>
+                <Button 
+                  variant={predefinedMessage === "desocuparDoca" ? "default" : "outline"} 
+                  onClick={() => handleSelectPredefinedMessage("desocuparDoca")} 
+                  className="text-xs h-auto py-2 justify-start"
+                >
+                  Desocupar Doca
+                </Button>
+                <Button 
+                  variant={predefinedMessage === "finalizarProcesso" ? "default" : "outline"} 
+                  onClick={() => handleSelectPredefinedMessage("finalizarProcesso")} 
+                  className="text-xs h-auto py-2 justify-start"
+                >
+                  Finalizar Processo
+                </Button>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mensagem Personalizada</label>
+              <Textarea 
+                value={messageToSend}
+                onChange={(e) => {
+                  setMessageToSend(e.target.value);
+                  if (predefinedMessage && e.target.value !== mensagens[predefinedMessage]) {
+                    setPredefinedMessage("");
+                  }
+                }}
+                placeholder="Digite sua mensagem aqui..."
+                className="min-h-[120px]"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              onClick={() => {
+                setSendMessageDialogOpen(false);
+                setMessageToSend("");
+                setPredefinedMessage("");
+              }} 
+              variant="outline"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSendMessage}
+              className="bg-blue-800 hover:bg-blue-900"
+              disabled={!messageToSend}
+            >
+              Enviar
             </Button>
           </DialogFooter>
         </DialogContent>
