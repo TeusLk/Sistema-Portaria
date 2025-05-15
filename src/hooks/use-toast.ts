@@ -21,11 +21,13 @@ const useToast = () => {
       if (variant === "destructive") {
         return sonnerToast.error(title as string, {
           description: description,
+          closeButton: true
         })
       }
 
       return sonnerToast(title as string, {
         description: description,
+        closeButton: true
       })
     },
     dismiss: (toastId?: string) => sonnerToast.dismiss(toastId),
