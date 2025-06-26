@@ -190,6 +190,17 @@ const mensagensPadrao = {
   confirmacaoCadastro: "Motorista cadastrado com sucesso."
 };
 
+// Função utilitária para buscar motorista pelo CPF
+async function fetchMotoristaByCpf(cpf: string) {
+  try {
+    const response = await fetch(`/api/v1/motorista/${cpf.replace(/\D/g, "")}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 const Portaria = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -626,6 +637,21 @@ const Portaria = () => {
     setMessageToSend(mensagens[messageKey]);
     setPredefinedMessage(messageKey);
   };
+
+  // Adicione este useEffect dentro do componente Portaria
+  useEffect(() => {
+    const cpf = form?.watch && form.watch("cpfMotorista");
+    if (cpf && cpf.replace(/\D/g, "").length === 11) {
+      fetchMotoristaByCpf(cpf).then(motorista => {
+        if (motorista) {
+          form.setValue("nomeMotorista", motorista.nome);
+          form.setValue("telefoneMotorista", motorista.telefone || "");
+          form.setValue("cnh", motorista.cnh || "");
+        }
+      });
+    }
+    // eslint-disable-next-line
+  }, [form?.watch && form.watch("cpfMotorista")]);
 
   return (
     <DashboardLayout>

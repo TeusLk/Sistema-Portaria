@@ -13,11 +13,14 @@ class UserRepository:
         return self.db.query(User).filter(User.email == email).first()
 
     def create(self, user: UserCreate):
-        hashed_password = pwd_context.hash(user.password)
+        hashed_password = pwd_context.hash(user.senha)
         db_user = User(
+            user=user.user,
             email=user.email,
-            hashed_password=hashed_password,
-            domain=user.domain
+            senha=hashed_password,
+            dominio=user.dominio,
+            status=user.status,
+            data_criacao=user.data_criacao
         )
         self.db.add(db_user)
         self.db.commit()

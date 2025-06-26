@@ -1,5 +1,6 @@
 from app.repositories.processo_repository import ProcessoRepository
 from app.schemas.processo import ProcessoCreate
+from app.models.processo import Portaria
 
 class ProcessoService:
     def __init__(self, repo: ProcessoRepository):
